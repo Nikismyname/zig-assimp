@@ -24,9 +24,9 @@ pub fn build(b: *std.Build) !void {
     });
 
     if (target.result.os.tag == .windows) {
-        lib.defineCMacro("_WINDOWS", null);
-        lib.defineCMacro("_WIN32", null);
-        lib.defineCMacro("OPENDDL_STATIC_LIBARY", null);
+        lib.root_module.addCMacro("_WINDOWS", "null");
+        lib.root_module.addCMacro("_WIN32", "null");
+        lib.root_module.addCMacro("OPENDDL_STATIC_LIBARY", "null");
     }
 
     lib.linkLibC();
@@ -54,7 +54,7 @@ pub fn build(b: *std.Build) !void {
     lib.addIncludePath(assimp.path("contrib/zlib"));
     lib.addIncludePath(assimp.path("contrib/openddlparser/include"));
 
-    lib.defineCMacro("RAPIDJSON_HAS_STDSTRING", "1");
+    lib.root_module.addCMacro("RAPIDJSON_HAS_STDSTRING", "1");
 
     lib.installConfigHeader(config_h);
     lib.installHeadersDirectory(
@@ -86,7 +86,7 @@ pub fn build(b: *std.Build) !void {
     var enable_all = false;
     var enabled_formats = std.BufSet.init(b.allocator);
     defer enabled_formats.deinit();
-    var tokenizer = std.mem.tokenize(u8, formats, ",");
+    var tokenizer = std.mem.tokenizeAny(u8, formats, ",");
     while (tokenizer.next()) |format| {
         if (std.mem.eql(u8, format, "all")) {
             enable_all = true;
@@ -123,8 +123,8 @@ pub fn build(b: *std.Build) !void {
             const define_importer = b.fmt("ASSIMP_BUILD_NO_{}_IMPORTER", .{fmtUpperCase(format_files.name)});
             const define_exporter = b.fmt("ASSIMP_BUILD_NO_{}_EXPORTER", .{fmtUpperCase(format_files.name)});
 
-            lib.defineCMacro(define_importer, null);
-            lib.defineCMacro(define_exporter, null);
+            lib.root_module.addCMacro(define_importer, "null");
+            lib.root_module.addCMacro(define_exporter, "null");
         }
     }
 
@@ -132,50 +132,11 @@ pub fn build(b: *std.Build) !void {
         const define_importer = b.fmt("ASSIMP_BUILD_NO_{}_IMPORTER", .{fmtUpperCase(unsupported_format)});
         const define_exporter = b.fmt("ASSIMP_BUILD_NO_{}_EXPORTER", .{fmtUpperCase(unsupported_format)});
 
-        lib.defineCMacro(define_importer, null);
-        lib.defineCMacro(define_exporter, null);
+        lib.root_module.addCMacro(define_importer, "null");
+        lib.root_module.addCMacro(define_exporter, "null");
     }
 
     b.installArtifact(lib);
-
-    const example_cpp = b.addExecutable(.{
-        .name = "static-example-cpp",
-        .target = target,
-        .optimize = optimize,
-    });
-    example_cpp.addCSourceFiles(.{
-        .files = &[_][]const u8{"src/example.cpp"},
-        .flags = &[_][]const u8{"-std=c++17"},
-    });
-    example_cpp.linkLibrary(lib);
-    example_cpp.linkLibC();
-    if (target.result.abi != .msvc) {
-        example_cpp.linkLibCpp();
-    }
-    example_cpp.addIncludePath(assimp.path("include"));
-    if (target.result.os.tag == .windows) {
-        example_cpp.defineCMacro("_WINDOWS", null);
-        example_cpp.defineCMacro("_WIN32", null);
-    }
-    b.installArtifact(example_cpp);
-
-    const example_c = b.addExecutable(.{
-        .name = "static-example-c",
-        .target = target,
-        .optimize = optimize,
-    });
-    example_c.addCSourceFiles(.{
-        .files = &[_][]const u8{"src/example.c"},
-        .flags = &[_][]const u8{"-std=c99"},
-    });
-    example_c.linkLibrary(lib);
-    example_c.linkLibC();
-    example_c.addIncludePath(assimp.path("include"));
-    if (target.result.os.tag == .windows) {
-        example_c.defineCMacro("_WINDOWS", null);
-        example_c.defineCMacro("_WIN32", null);
-    }
-    b.installArtifact(example_c);
 }
 
 const unsupported_formats = [_][]const u8{
